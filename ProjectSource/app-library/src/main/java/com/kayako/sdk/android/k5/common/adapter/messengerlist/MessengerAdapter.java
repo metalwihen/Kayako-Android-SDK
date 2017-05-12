@@ -14,10 +14,12 @@ import com.kayako.sdk.android.k5.common.adapter.BaseListItem;
 import com.kayako.sdk.android.k5.common.adapter.loadmorelist.EndlessRecyclerViewScrollAdapter;
 import com.kayako.sdk.android.k5.common.adapter.messengerlist.helper.BotMessageHelper;
 import com.kayako.sdk.android.k5.common.adapter.messengerlist.helper.DeliveryIndicatorHelper;
+import com.kayako.sdk.android.k5.common.adapter.messengerlist.helper.EmoteMessageStyleHelper;
 import com.kayako.sdk.android.k5.common.adapter.messengerlist.helper.FadedBackgroundHelper;
 import com.kayako.sdk.android.k5.common.adapter.messengerlist.helper.InputFieldEmailHelper;
 import com.kayako.sdk.android.k5.common.adapter.messengerlist.helper.InputFieldFeedbackCommentHelper;
 import com.kayako.sdk.android.k5.common.adapter.messengerlist.helper.InputFieldFeedbackRatingHelper;
+import com.kayako.sdk.android.k5.common.adapter.messengerlist.helper.MessageStyleHelper;
 import com.kayako.sdk.android.k5.common.adapter.messengerlist.view.AttachmentMessageContinuedOtherListItem;
 import com.kayako.sdk.android.k5.common.adapter.messengerlist.view.AttachmentMessageContinuedOtherViewHolder;
 import com.kayako.sdk.android.k5.common.adapter.messengerlist.view.AttachmentMessageContinuedSelfListItem;
@@ -86,6 +88,12 @@ public class MessengerAdapter extends EndlessRecyclerViewScrollAdapter {
 
                 setItemClickListenerOnView(simpleMessageSelfViewHolder.itemView, simpleMessageSelfListItem.getItemType(), simpleMessageSelfListItem.getId(), simpleMessageSelfListItem.getData());
 
+                if (EmoteMessageStyleHelper.isSingleEmote(simpleMessageSelfListItem.getMessage())) {
+                    EmoteMessageStyleHelper.setSelfMessageStyle(simpleMessageSelfViewHolder.message);
+                } else {
+                    MessageStyleHelper.setSelfMessageStyle(simpleMessageSelfViewHolder.message);
+                }
+
                 // Covers time and delivery status
                 DeliveryIndicatorHelper.setDeliveryIndicatorView(simpleMessageSelfListItem.getDeliveryIndicator(), simpleMessageSelfListItem.getTime(), simpleMessageSelfViewHolder);
                 FadedBackgroundHelper.configureBackground(simpleMessageSelfViewHolder.message, simpleMessageSelfListItem.isFadeBackground());
@@ -112,6 +120,13 @@ public class MessengerAdapter extends EndlessRecyclerViewScrollAdapter {
                     simpleMessageOtherViewHolder.time.setText(DateTimeUtils.formatTime(Kayako.getApplicationContext(), simpleMessageOtherListItem.getTime()));
                 }
 
+                if (EmoteMessageStyleHelper.isSingleEmote(simpleMessageOtherListItem.getMessage())) {
+                    EmoteMessageStyleHelper.setOtherMessageStyle(simpleMessageOtherViewHolder.message);
+                } else {
+                    MessageStyleHelper.setOtherMessageStyle(simpleMessageOtherViewHolder.message);
+                }
+
+
                 setAvatarClickListenerOnView(simpleMessageOtherViewHolder.avatar, simpleMessageOtherListItem.getItemType(), simpleMessageOtherListItem.getId(), simpleMessageOtherListItem.getData());
                 setItemClickListenerOnView(simpleMessageOtherViewHolder.itemView, simpleMessageOtherListItem.getItemType(), simpleMessageOtherListItem.getId(), simpleMessageOtherListItem.getData());
                 break;
@@ -123,6 +138,12 @@ public class MessengerAdapter extends EndlessRecyclerViewScrollAdapter {
                 simpleMessageContinuedSelfViewHolder.message.setText(Html.fromHtml(simpleMessageContinuedSelfListItem.getMessage()));
 
                 setItemClickListenerOnView(simpleMessageContinuedSelfViewHolder.itemView, simpleMessageContinuedSelfListItem.getItemType(), simpleMessageContinuedSelfListItem.getId(), simpleMessageContinuedSelfListItem.getData());
+
+                if (EmoteMessageStyleHelper.isSingleEmote(simpleMessageContinuedSelfListItem.getMessage())) {
+                    EmoteMessageStyleHelper.setSelfMessageStyle(simpleMessageContinuedSelfViewHolder.message);
+                } else {
+                    MessageStyleHelper.setSelfMessageStyle(simpleMessageContinuedSelfViewHolder.message);
+                }
 
                 // Covers time and delivery status
                 DeliveryIndicatorHelper.setDeliveryIndicatorView(simpleMessageContinuedSelfListItem.getDeliveryIndicator(), simpleMessageContinuedSelfListItem.getTime(), simpleMessageContinuedSelfViewHolder);
@@ -140,6 +161,12 @@ public class MessengerAdapter extends EndlessRecyclerViewScrollAdapter {
                 } else {
                     simpleMessageContinuedOtherViewHolder.time.setVisibility(View.VISIBLE);
                     simpleMessageContinuedOtherViewHolder.time.setText(DateTimeUtils.formatTime(Kayako.getApplicationContext(), simpleMessageContinuedOtherListItem.getTime()));
+                }
+
+                if (EmoteMessageStyleHelper.isSingleEmote(simpleMessageContinuedOtherListItem.getMessage())) {
+                    EmoteMessageStyleHelper.setOtherMessageStyle(simpleMessageContinuedOtherViewHolder.message);
+                } else {
+                    MessageStyleHelper.setOtherMessageStyle(simpleMessageContinuedOtherViewHolder.message);
                 }
 
                 setItemClickListenerOnView(simpleMessageContinuedOtherViewHolder.itemView, simpleMessageContinuedOtherListItem.getItemType(), simpleMessageContinuedOtherListItem.getId(), simpleMessageContinuedOtherListItem.getData());

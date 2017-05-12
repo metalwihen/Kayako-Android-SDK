@@ -24,11 +24,13 @@ public class MessageStyleHelper {
     }
 
     public static void setOtherMessageStyle(TextView messageView) {
-        Context context = Kayako.getApplicationContext();
-        float textSize = context.getResources().getDimension(R.dimen.ko__messenger_speech_bubble_message_text_size);
-
-        messageView.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, textSize, context.getResources().getDisplayMetrics()));
         messageView.setTextColor(Kayako.getApplicationContext().getResources().getColor(R.color.ko__messenger_speech_bubble_other_text_color));
         messageView.setBackgroundResource(R.drawable.ko__speech_bubble_other);
+    }
+
+    private static void configureTextSize(){
+//        Context context = Kayako.getApplicationContext();
+//        float textSize = context.getResources().getDimension(R.dimen.ko__messenger_speech_bubble_message_text_size);
+//        messageView.setTextSize(textSize); //TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, textSize, context.getResources().getDisplayMetrics()));
     }
 }

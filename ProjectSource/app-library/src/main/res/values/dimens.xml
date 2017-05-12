@@ -4,6 +4,7 @@
     <dimen name="ko__activity_vertical_margin">16dp</dimen>
 
     <dimen name="ko__messenger_speech_bubble_message_text_size">16sp</dimen>
+    <dimen name="ko__messenger_speech_bubble_message_emote_text_size">48sp</dimen>
 
     <dimen name="ko__messenger_avatar_size">32dp</dimen>
     <dimen name="ko__messenger_list_item_margin">8dp</dimen>
