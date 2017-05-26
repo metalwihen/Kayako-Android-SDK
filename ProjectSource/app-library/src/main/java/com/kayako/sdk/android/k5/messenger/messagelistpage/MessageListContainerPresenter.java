@@ -201,6 +201,8 @@ public class MessageListContainerPresenter implements MessageListContainerContra
             throw new AssertionError("If it is NOT a new conversation, conversation id should NOT be null");
         }
 
+        mOffboardingHelper.onSendingReply();
+
         onSendMessageReply(message);
     }
 
@@ -441,7 +443,7 @@ public class MessageListContainerPresenter implements MessageListContainerContra
                 mReplyBoxHelper.getReplyBoxVisibility(
                         !mConversationHelper.isConversationCreated(),
                         mMessengerPrefHelper.getEmail() != null,
-                        mConversationHelper.isConversationClosed() || mConversationHelper.isConversationCompleted(),
+                        mConversationHelper.isConversationClosed(),
                         mListHelper.getListPageState());
 
         // Assertions
@@ -521,15 +523,13 @@ public class MessageListContainerPresenter implements MessageListContainerContra
 
     private List<BaseListItem> getOffboardingListItemViews() {
         if (mConversationHelper.getConversation() != null) {
-            final boolean isCompleted = mConversationHelper.isConversationClosed() || mConversationHelper.isConversationCompleted();
-
             final String nameOfAgent = mConversationHelper.getConversation().getLastAgentReplier() == null
                     ? MessengerPref.getInstance().getBrandName()
                     : mConversationHelper.getConversation().getLastAgentReplier().getFullName();
 
             return mOffboardingHelper.getOffboardingListItems(
                     nameOfAgent,
-                    isCompleted,
+                    mConversationHelper.getConversation(),
                     mOffboardingHelperViewCallback
             );
         } else {
@@ -597,7 +597,7 @@ public class MessageListContainerPresenter implements MessageListContainerContra
 
         // Load rating when conversation is loaded for the first time
         mOffboardingHelper.onLoadConversation(
-                mConversationHelper.isConversationClosed() || mConversationHelper.isConversationCompleted(),
+                conversation,
                 mOffboardingHelperViewCallback);
 
         // Since reply box visibility depends on conversation status - refresh reply box every time conversation is loaded

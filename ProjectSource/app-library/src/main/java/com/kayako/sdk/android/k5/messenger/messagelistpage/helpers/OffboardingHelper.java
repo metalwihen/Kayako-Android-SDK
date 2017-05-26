@@ -9,12 +9,17 @@ import com.kayako.sdk.android.k5.common.adapter.messengerlist.view.InputFeedback
 import com.kayako.sdk.android.k5.common.adapter.messengerlist.view.InputFeedbackCompletedListItem;
 import com.kayako.sdk.android.k5.common.adapter.messengerlist.view.InputFeedbackRatingListItem;
 import com.kayako.sdk.android.k5.core.Kayako;
+import com.kayako.sdk.android.k5.core.KayakoLogHelper;
+import com.kayako.sdk.messenger.conversation.Conversation;
+import com.kayako.sdk.messenger.conversation.fields.status.Status;
 import com.kayako.sdk.messenger.rating.Rating;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -49,7 +54,8 @@ public class OffboardingHelper {
     private Queue<UnsentRating> updateRatingQueue = new ConcurrentLinkedQueue<>();
     private AtomicReference<UnsentRating> lastRatingBeingSent = new AtomicReference<>();
 
-    private AtomicBoolean isConversationOriginallyCompleted = new AtomicBoolean(false);
+    private AtomicReference<Status.Type> originalConversationStatus = new AtomicReference<Status.Type>(null);
+    private Set<Status.Type> lastConversationStatuses = new HashSet<>();
 
     //////////// API CALLBACK METHODS ////////////
 
@@ -99,31 +105,92 @@ public class OffboardingHelper {
         runNextInQueueIfReady(callback);
     }
 
-    public void onLoadConversation(boolean isConversationCompletedOrClosed, OffboardingHelperViewCallback callback) {
+    public void onSendingReply(OffboardingHelperViewCallback callback) {
+        /*
+            If a reply was sent while the conversation was completed, it will be reopened.
+            The ratings should be reset whenever a user replies and changes the status so that the user can re-rate the conversation
+         */
+        resetCurrentRating();
+        callback.onRefreshListView(true);
+    }
+
+    public void onLoadConversation(Conversation conversation, OffboardingHelperViewCallback callback) {
         // Both when a new conversation is created and when loading an existing conversation
         // This is done only once a conversation is loaded because to load ratings of a conversation, we need to make sure the conversation exists
 
-        if (isConversationCompletedOrClosed
-                || !hasRatingsBeenLoadedViaApi.get()) { // Load rating via API as long current rating is null
-            callback.onLoadRatings();
-        } else {
-            callback.onRefreshListView(false); // Ensure that during status changes from open -> completed -> open, the feedback is removed
+        // Assertion
+        if (conversation.getStatus() == null) {
+            KayakoLogHelper.logException(getClass().getName(), new IllegalStateException("Expecting status to not be null"));
+            return;
         }
 
-        // TODO: Handle a situation where a customer may want to rate the conversation multiple times
+        Status.Type currentStatus = conversation.getStatus().getType();
+
+        lastConversationStatuses.add(currentStatus);
+
+        // First time a conversation loads, decide flow based on the original status
+        if (originalConversationStatus.get() == null) {
+            originalConversationStatus.set(currentStatus);
+        }
+
+        // if originally completed/closed and the latest ratings have not been added, load them
+        if ((originalConversationStatus.get() == Status.Type.COMPLETED || originalConversationStatus.get() == Status.Type.CLOSED)
+                && !hasRatingsBeenLoadedViaApi.get()) {
+            callback.onLoadRatings(); // load ratings if not loaded before
+        }
     }
 
-    public List<BaseListItem> getOffboardingListItems(String nameToAddRatingAndFeedbackOf, boolean isConversationClosed, final OffboardingHelperViewCallback callback) {
+    public List<BaseListItem> getOffboardingListItems(String nameToAddRatingAndFeedbackOf, Conversation conversation, final OffboardingHelperViewCallback callback) {
         if (nameToAddRatingAndFeedbackOf == null || callback == null) {
             throw new IllegalArgumentException("Invalid arguments");
         }
 
-        if (!isConversationClosed ||   // Do not show feedback items if conversation is not closed
-                !hasRatingsBeenLoadedViaApi.get()) { // Do not show feedback items if ratings have not been loaded via API yet (user may have already selected a rating before)
+        // Assertion: Necessary - can be null when a conversation is created for the first time
+        if (conversation.getStatus() == null || conversation.getStatus().getType() == null) {
+            KayakoLogHelper.logException(getClass().getName(), new IllegalStateException("Expecting status to not be null"));
             return Collections.EMPTY_LIST;
         }
 
+        Status.Type statusType = conversation.getStatus().getType();
 
+        // Return empty list if not completed or not closed
+        if (!(statusType == Status.Type.COMPLETED || statusType == Status.Type.CLOSED)) {
+            return Collections.EMPTY_LIST;
+
+        } else {
+
+            // if the status was changed to completed from a non-completed status, then ask for rating
+            if ((lastConversationStatuses.contains(Status.Type.OPEN)
+                    || lastConversationStatuses.contains(Status.Type.PENDING)
+                    || lastConversationStatuses.contains(Status.Type.NEW))
+                    && statusType == Status.Type.COMPLETED) {
+                return getOffboardingItemsByAskingUserRating(callback);
+            }
+
+            // Else, if it's originally closed/completed and it's still closed/completed AND there is an existing rating, show it
+            else if (
+                    (originalConversationStatus.get() == Status.Type.COMPLETED || originalConversationStatus.get() == Status.Type.CLOSED)
+                            && hasRatingsBeenLoadedViaApi.get() && latestRatingOfConversation.get() != null) {
+
+                Rating.SCORE score = latestRatingOfConversation.get().getScore();
+                String feedback = latestRatingOfConversation.get().getComment();
+
+                if (score != null && feedback != null) {
+                    return getOffboardingItemsOnCommentSubmission(score, feedback);
+                } else if (score != null && statusType == Status.Type.COMPLETED) {
+                    return getOffboardingItemsOnRatingSubmission(convert(score));
+                }
+            }
+
+            // Else, other conditions not considered, don't show anything
+            return Collections.EMPTY_LIST;
+        }
+    }
+
+    //////////// LIST ITEM METHODS ////////////
+
+    private List<BaseListItem> getOffboardingItemsByAskingUserRating(
+            final OffboardingHelperViewCallback callback) {
         if (currentRatingSubmittedViaUI == null) {
             return getOffboardingItemsToSelectRating(new InputFeedback.OnSelectRatingListener() {
                 @Override
@@ -177,10 +244,8 @@ public class OffboardingHelper {
         }
     }
 
-    //////////// LIST ITEM METHODS ////////////
-
-
-    private List<BaseListItem> getOffboardingItemsToSelectRating(final InputFeedback.OnSelectRatingListener onSelectRatingListener) {
+    private List<BaseListItem> getOffboardingItemsToSelectRating(
+            final InputFeedback.OnSelectRatingListener onSelectRatingListener) {
         List<BaseListItem> listItems = new ArrayList<>();
         listItems.add(new InputFeedbackRatingListItem(
                 Kayako.getApplicationContext().getString(R.string.ko__messenger_input_feedback_rating_instruction_message),
@@ -189,7 +254,8 @@ public class OffboardingHelper {
         return listItems;
     }
 
-    private List<BaseListItem> getOffboardingItemsOnRatingSubmission(InputFeedback.RATING rating) {
+    private List<BaseListItem> getOffboardingItemsOnRatingSubmission(InputFeedback.RATING
+                                                                             rating) {
         List<BaseListItem> listItems = new ArrayList<>();
         listItems.add(new InputFeedbackRatingListItem(
                 Kayako.getApplicationContext().getString(R.string.ko__messenger_input_feedback_rating_instruction_message),
@@ -198,7 +264,8 @@ public class OffboardingHelper {
         return listItems;
     }
 
-    private List<BaseListItem> getOffboardingItemsToAddComment(Rating.SCORE rating, InputFeedbackCommentListItem.OnAddFeedbackCommentCallback onAddFeedbackComment) {
+    private List<BaseListItem> getOffboardingItemsToAddComment(Rating.SCORE
+                                                                       rating, InputFeedbackCommentListItem.OnAddFeedbackCommentCallback onAddFeedbackComment) {
         List<BaseListItem> listItems = new ArrayList<>();
         listItems.add(new InputFeedbackCommentListItem(
                 getCommentInstructionMessage(rating),
@@ -207,7 +274,8 @@ public class OffboardingHelper {
         return listItems;
     }
 
-    private List<BaseListItem> getOffboardingItemsOnCommentSubmission(Rating.SCORE rating, String feedback) {
+    private List<BaseListItem> getOffboardingItemsOnCommentSubmission(Rating.SCORE
+                                                                              rating, String feedback) {
         List<BaseListItem> listItems = new ArrayList<>();
         listItems.add(new InputFeedbackCompletedListItem(
                 getCommentInstructionMessage(rating),
@@ -217,6 +285,12 @@ public class OffboardingHelper {
     }
 
     //////////// UTIL METHODS ////////////
+
+    private void resetCurrentRating() {
+        currentRatingSubmittedViaUI = null;
+        currentFeedbackSubmittedViaUI = null;
+    }
+
 
     private void setCurrentRatingViaUIIfNotSetAlready(Rating rating) {
         if (rating == null || rating == null) {
@@ -234,7 +308,6 @@ public class OffboardingHelper {
             currentFeedbackSubmittedViaUI = rating.getComment();
         }
     }
-
 
     private Rating getLatestRating(List<Rating> ratings) {
         Rating latestRating = null;
@@ -295,7 +368,9 @@ public class OffboardingHelper {
 
     private void removeFromQueue(OffboardingHelperViewCallback callback, Rating.SCORE rating, String feedback) {
         if (!updateRatingQueue.peek().equals(new UnsentRating(rating, feedback))) {
-            throw new IllegalStateException("Should remove the same rating from queue. State should be consistent!");
+            // Sometimes, onFailed() callbacks happen more than once for the same request
+            KayakoLogHelper.logException(getClass().getName(), new IllegalStateException("Should remove the same rating from queue. State should be consistent!"));
+            return;
         }
         updateRatingQueue.remove();
     }
@@ -315,7 +390,7 @@ public class OffboardingHelper {
         addOrUpdateRating(callback, unsentRating.getRatingScore(), unsentRating.getFeedback());
     }
 
-    //////////// INTERFACES & PVT CLASSES ////////////
+//////////// INTERFACES & PVT CLASSES ////////////
 
 
     public interface OffboardingHelperViewCallback {
