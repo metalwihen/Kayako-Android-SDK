@@ -4,6 +4,7 @@
 -keep class okhttp3.** { *; }
 -keep interface okhttp3.** { *; }
 -dontwarn okhttp3.**
+-dontwarn okio.**
 
 # Glide
 
@@ -22,3 +23,8 @@
 # Android
 
 -keep class android.support.v4.** { *; }
+
+# 3rd party client library warnings
+
+-dontwarn com.fasterxml.jackson.**
+
