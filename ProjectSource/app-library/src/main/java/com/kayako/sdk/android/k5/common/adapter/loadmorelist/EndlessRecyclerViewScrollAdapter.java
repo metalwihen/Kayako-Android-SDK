@@ -43,13 +43,22 @@ public abstract class EndlessRecyclerViewScrollAdapter extends RecyclerView.Adap
     }
 
     public void replaceAllData(List<BaseListItem> newData) {
+        replaceAllData(newData, false);
+    }
+
+    public void replaceAllData(List<BaseListItem> newData, boolean disableDiffUtils) {
         if (newData == null) {
             newData = new ArrayList<>();
         }
 
-        final DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtilsCallback(mValues, newData), false);
-        mValues = newData;
-        result.dispatchUpdatesTo(this);
+        if (disableDiffUtils) { // Added because it causes IndexOutOfBoundsException sometimes
+            final DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtilsCallback(mValues, newData), false);
+            mValues = newData;
+            result.dispatchUpdatesTo(this);
+        } else {
+            mValues = newData;
+            notifyDataSetChanged();
+        }
     }
 
     public void addLoadMoreData(List<BaseListItem> moreData) {

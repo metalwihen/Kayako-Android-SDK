@@ -77,12 +77,16 @@ public class MessengerListFragment extends BaseListFragment {
     }
 
     public void replaceMessengerList(List<BaseListItem> items) {
+        replaceMessengerList(items, false);
+    }
+
+    public void replaceMessengerList(List<BaseListItem> items, boolean disableDiffUtils) {
         // Reverse item order
         Collections.reverse(items);
 
         assert mMessengerAdapter != null;
 
-        mMessengerAdapter.replaceAllData(items);
+        mMessengerAdapter.replaceAllData(items, disableDiffUtils);
     }
 
     public void setOnItemClickListener(MessengerAdapter.OnItemClickListener listener) {
