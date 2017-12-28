@@ -48,3 +48,18 @@
   public *** get*();
   public void set*(***);
 }
+-keep class com.fasterxml.jackson.databind.ObjectMapper {
+    public <methods>;
+    protected <methods>;
+}
+-keep class com.fasterxml.jackson.databind.ObjectWriter {
+    public ** writeValueAsString(**);
+}
+-keep class com.fasterxml.jackson.annotation.** { *; }
+-keepnames class com.fasterxml.jackson.** { *; }
+-keepattributes Annotation,EnclosingMethod,Signature
+-keepclassmembers public final enum org.codehaus.jackson.annotate.JsonAutoDetect$Visibility {
+public static final org.codehaus.jackson.annotate.JsonAutoDetect$Visibility *; }
+-keep class org.codehaus.* { *; }
+-dontwarn org.w3c.dom.bootstrap.DOMImplementationRegistry
+-dontwarn com.fasterxml.jackson.databind.**
